@@ -3,12 +3,13 @@
     - data pre-processing
     - feature extraction
 """
-
-from xgboost import XGBClassifier
-from sklearn.ensemble import IsolationForest
 import pandas as pd
 import os
 import numpy as np
+
+from xgboost import XGBClassifier
+from sklearn.ensemble import IsolationForest
+from sklearn.model_selection import train_test_split
 
 
 class Preprocessor:
@@ -17,7 +18,7 @@ class Preprocessor:
         Initialize class instance.
         :param folder_path: (string) folder containing the csv files.
         """
-        self.df_store, self.df_train, self.df_test = None, None, None
+        self.df_store, self.df_train, self.df_valid = None, None, None
         self.folder_path = folder_path
 
     def load_data(self):
@@ -26,64 +27,87 @@ class Preprocessor:
         """
         self.df_store = pd.read_csv(os.path.join(self.folder_path, 'store.csv'))
         self.df_train = pd.read_csv(os.path.join(self.folder_path, 'train.csv'))
-        self.df_test = pd.read_csv(os.path.join(self.folder_path, 'test.csv'))
 
         # merge dataframes to get store information in both training and testing sets.
         self.df_train = self.df_train.merge(self.df_store, on='Store')
-        self.df_test = self.df_test.merge(self.df_store, on='Store')
+
+        # split into training and validation set
+        self.df_train, self.df_valid = train_test_split(self.df_train, test_size=0.1, random_state=42)
 
         print('Loaded tables in Pandas dataframes.\n')
-        print('df_store shape: {} \ndf_train shape: {} \ndf_test shape: {}\n'.format(self.df_store.shape,
-                                                                                     self.df_train.shape,
-                                                                                     self.df_test.shape))
+        print('df_train shape: {} \ndf_valid shape: {}\n'.format(self.df_train.shape, self.df_valid.shape))
 
     @staticmethod
-    def preprocess_date(df):
+    def preprocess_dates(df_list):
         """
             Extract information from the date such as the month, day of the month...
-            :param df: (Pandas dataframe) dataframe with a date column that we want to deal with.
+            :param df_list: list of Pandas dataframes with a date column that we want to deal with.
         """
-        df['Date'] = pd.to_datetime(df['Date'])
-        df['DayOfMonth'] = df['Date'].apply(lambda x: x.day)
-        df['Month'] = df['Date'].apply(lambda x: x.month)
-        df['Year'] = df['Date'].apply(lambda x: x.year)
-        df['DayOfWeek'] = df['Date'].apply(lambda x: x.dayofweek)
+        for df in df_list:
+            df['Date'] = pd.to_datetime(df['Date'])
+            df['DayOfMonth'] = df['Date'].apply(lambda x: x.day)
+            df['Month'] = df['Date'].apply(lambda x: x.month)
+            df['Year'] = df['Date'].apply(lambda x: x.year)
+            df['DayOfWeek'] = df['Date'].apply(lambda x: x.dayofweek)
+            df['WeekOfYear'] = df['Date'].apply(lambda x: x.weekofyear)
+            df.drop(['Date'], inplace=True, axis=1)
+
+            # number of months since a competition store has opened
+            df['MonthsSinceCompetition'] = 12 * (df['Year'] - df['CompetitionOpenSinceYear']) + \
+                                    (df['Month'] - df['CompetitionOpenSinceMonth'])
+            df.drop(['CompetitionOpenSinceYear', 'CompetitionOpenSinceMonth'], inplace=True, axis=1)
+
+            # number of months since a promotion has started
+            df['MonthsSincePromo'] = 12 * (df['Year'] - df['Promo2SinceYear']) + \
+                              (df['WeekOfYear'] - df['Promo2SinceWeek']) / 4.0
+            df['MonthsSincePromo'] = df['MonthsSincePromo'].apply(lambda x: x if x > 0 else 0)
+            df.drop(['Promo2SinceYear', 'Promo2SinceWeek'], inplace=True, axis=1)
+
+        print("Added columns: 'DayOfMonth', 'Month', 'Year', 'DayOfWeek', 'WeekOfYear', 'MonthsSinceCompetition', "
+              "'MonthsSincePromo'.")
+        print("Removed columns: 'Date', 'CompetitionOpenSinceYear', 'CompetitionOpenSinceMonth', 'Promo2SinceYear', "
+              "'Promo2SinceWeek'")
 
     @staticmethod
-    def add_avg_basket(df):
+    def add_avg_basket(df_list):
         """
         Add average customer's basket value according for each store individually, and for each store type.
-        :param df: (Pandas dataframe)
+        :param df_list: list of Pandas dataframes
         """
-        df['mean_cart'] = df['Sales'] / df['Customers']
-        # get the average basket value by store type
-        df_mean_cart_by_type = df.groupby('StoreType')['mean_cart'].aggregate(['mean'])
-        df_mean_cart_by_type.reset_index(inplace=True)
-        '''
-        Computing df_mean_cart_by_type gives the following data frame
-        
-        StoreType     mean
-            a       8.846277
-            b       5.133097
-            c       8.626227
-            d       11.277862
-        '''
-        # we can now add a new column to our dataframe
-        df['mean_cart_by_type'] = df['StoreType'].apply(
-            lambda x: df_mean_cart_by_type[df_mean_cart_by_type['StoreType'] == x]['mean'].values[0])
+        for df in df_list:
+            df['MeanCart'] = df['Sales'] / df['Customers']
+            # get the average basket value by store type
+            df_mean_cart_by_type = df.groupby('StoreType')['MeanCart'].aggregate(['mean'])
+            df_mean_cart_by_type.reset_index(inplace=True)
+            '''
+            Computing df_mean_cart_by_type gives the following data frame
+            
+            StoreType     mean
+                a       8.846277
+                b       5.133097
+                c       8.626227
+                d       11.277862
+            '''
+            # we can now add a new column to our dataframe
+            df['MeanCartByType'] = df.merge(df_mean_cart_by_type, on='StoreType')['mean']
+
+        print("Added columns 'MeanCart', 'MeanCartByType'.")
 
     @staticmethod
-    def handle_categorical(df):
+    def handle_categorical(df_list):
         """
         Handle categorical variables and encode them.
-        :param df: (Pandas dataframe) dataframe containing categorical variables to deal with.
+        :param df_list: list of Pandas dataframes containing categorical variables to deal with.
         """
-        # define a dict where the keys are the element to encode, and the values are the targets
-        encodings = {'0': 0, 'a': 1, 'b': 2, 'c': 3, 'd': 4}
-        # now we can encode the categorical features
-        df['StateHoliday'].replace(encodings, inplace=True)
-        df['StoreType'].replace(encodings, inplace=True)
-        df['Assortment'].replace(encodings, inplace=True)
+        for df in df_list:
+            # define a dict where the keys are the element to encode, and the values are the targets
+            encodings = {'0': 0, 'a': 1, 'b': 2, 'c': 3, 'd': 4}
+            # now we can encode the categorical features
+            df['StateHoliday'].replace(encodings, inplace=True)
+            df['StoreType'].replace(encodings, inplace=True)
+            df['Assortment'].replace(encodings, inplace=True)
+
+        print('Dealed with categorical features.')
 
     @staticmethod
     def get_most_important_features(X_train, y_train, n_features):
@@ -119,13 +143,14 @@ class Preprocessor:
             Run the whole pipeline of pre-processing.
         """
         self.load_data()
-        self.preprocess_date(self.df_train)
-        self.preprocess_date(self.df_test)
-        print("Columns 'DayOfMonth', 'DayOfWeek', 'Year' and 'Month' have been added to both train and test sets.")
+        df_list = [self.df_train, self.df_valid]
+        self.preprocess_dates(df_list)
+        self.add_avg_basket(df_list)
+        self.handle_categorical(df_list)
+        print(self.df_train.head())
+        print(self.df_train.columns)
 
     # TODO: fill nan, normalization (careful with outliers)
-    #  Average customer basket value according to store type, and for each store,
-    #  number of month since the competition store is open
 
 
 preprocessor = Preprocessor('data')
