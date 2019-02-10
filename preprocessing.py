@@ -147,10 +147,8 @@ class Preprocessor:
         self.preprocess_dates(df_list)
         self.add_avg_basket(df_list)
         self.handle_categorical(df_list)
-        print(self.df_train.head())
         print(self.df_train.columns)
-
-    # TODO: fill nan, normalization (careful with outliers)
+        print(self.df_train.info())
 
 
 preprocessor = Preprocessor('data')
