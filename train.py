@@ -1,8 +1,9 @@
-from xgboost import XGBRegressor
+import pickle
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator, ClassifierMixin
+from xgboost import XGBRegressor
 from sklearn import linear_model
+from sklearn.base import BaseEstimator, ClassifierMixin
 
 class Model(BaseEstimator, ClassifierMixin):
     """scikit-learn estimator for the Rossmann's stores problem
@@ -49,6 +50,14 @@ class Model(BaseEstimator, ClassifierMixin):
             
         elif self.solver == 'linear':
             self.model = linear_model.LinearRegression().fit(X, y)
+            
+        # Dump the trained classifier with Pickle
+        classifier_pkl_filename = 'trained_classifier.pkl'
+        # Open the file to save as pkl file
+        classifier_model_pkl = open(classifier_pkl_filename, 'wb')
+        pickle.dump(self.model, classifier_model_pkl)
+        # Close the pickle instances
+        classifier_model_pkl.close()
             
         return self
     
