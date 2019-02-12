@@ -11,7 +11,7 @@ from preprocessing import Preprocessor, build_dataset
 class Model(BaseEstimator, RegressorMixin):
     """
     scikit-learn estimator for the Rossmann's stores problem
-    
+
     Parameters
     ----------
     alpha : float
@@ -26,41 +26,41 @@ class Model(BaseEstimator, RegressorMixin):
         self.alpha = alpha
         self.solver = solver
         self.model = None
-        assert self.solver in ['xgb', 'lasso', 'ridge', 'linear'] 
+        assert self.solver in ['xgb', 'lasso', 'ridge', 'linear']
 
     def fit(self, X, y):
         """
         Fit method
-        
+
         Parameters
         ----------
         X : ndarray, shape (n_samples, n_features)
             The features.
         y : ndarray, shape (n_samples,)
-            The target. 
+            The target.
         """
-        
+
         if self.solver == 'xgb':
             self.model = XGBRegressor(objective="reg:linear")
             self.model.fit(X, y)
-            
+
         elif self.solver == 'lasso':
             self.model = linear_model.Lasso(alpha=self.alpha, max_iter=self.max_iter)
             self.model.fit(X, y)
-            
+
         elif self.solver == 'ridge':
             self.model = linear_model.Ridge(alpha=self.alpha, max_iter=self.max_iter)
             self.model.fit(X, y)
-            
+
         elif self.solver == 'linear':
             self.model = linear_model.LinearRegression()
             self.model.fit(X, y)
-            
+
         return self
 
     def predict(self, X):
         """Predict method
-        
+
         Parameters
         ----------
         X : ndarray, shape (n_samples, n_features)
@@ -76,15 +76,15 @@ class Model(BaseEstimator, RegressorMixin):
 
 if __name__ == "__main__":
 
-    data = build_dataset('data')
+    data = build_dataset('train')
     train_data, valid_data = train_test_split(data, test_size=0.2, random_state=42)
     preprocessor = Preprocessor()
     preprocessor.fit(train_data)
     train_data = preprocessor.transform(train_data)
     valid_data = preprocessor.transform(valid_data)
 
-    X_train = train_data.drop(['Sales'], axis=1)
-    X_valid = valid_data.drop(['Sales'], axis=1)
+    X_train = train_data.drop(['Sales', 'Customers'], axis=1)
+    X_valid = valid_data.drop(['Sales', 'Customers'], axis=1)
     y_train = train_data['Sales']
     y_valid = valid_data['Sales']
 
@@ -113,7 +113,3 @@ if __name__ == "__main__":
     model = pickle.dump(best_model[1], model_file)
     model_file.close()
     print('Done.')
-
-
-
-

@@ -13,18 +13,23 @@ from xgboost import XGBClassifier
 from sklearn.ensemble import IsolationForest
 
 
-def __load_data__(path):
+def __load_data__(type):
     """
     Load data into Pandas dataframes.
     """
-    df_store = pd.read_csv(os.path.join(path, 'store.csv'))
-    df_train = pd.read_csv(os.path.join(path, 'train.csv'))
+    if type == 'train':
+        df = pd.read_csv(os.path.join('data', 'train.csv'))
+    elif type == 'test':
+        df = pd.read_csv(os.path.join('data', 'test.csv'))
+    else:
+        raise ValueError('dataset type must be "train" or "test".')
 
     # merge dataframes to get store information in both training and testing sets.
-    df_train = df_train.merge(df_store, on='Store')
+    df_store = pd.read_csv(os.path.join('data', 'store.csv'))
+    df = df.merge(df_store, on='Store')
 
     print('Loaded tables in Pandas dataframes.')
-    return df_train
+    return df
 
 
 def __handle_categorical__(df):
@@ -88,9 +93,9 @@ def __preprocess_dates__(df):
     return df
 
 
-def build_dataset(path):
+def build_dataset(type):
 
-    df = __load_data__(path)
+    df = __load_data__(type)
     df = __handle_categorical__(df)
     df = __preprocess_dates__(df)
     print(df.info())
@@ -129,7 +134,7 @@ class Preprocessor:
         """
 
         # if object has not been fit prior to transform call, load data stats from pickle file
-        if self.data_stats is None:
+        if not self.data_stats:
             print('Loading data stats from pickle file...')
             data_stats_file = open('data_stats.pkl', 'rb')
             self.data_stats = pickle.load(data_stats_file)
@@ -198,7 +203,7 @@ def __outlier_detection__(df):
 
 # unit test
 if __name__ == "__main__":
-    data = build_dataset('data')
+    data = build_dataset('train')
     preprocessor = Preprocessor()
     preprocessor.fit(data)
     data = preprocessor.transform(data)
