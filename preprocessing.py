@@ -156,6 +156,8 @@ class Preprocessor:
         # Fill with 0 promo2 variables
         data['MonthsSincePromo'].fillna(0, inplace=True)
 
+        data['Open'].fillna(0, inplace=True)
+
         print('Null columns:')
         for column in data.columns.tolist():
             if data[column].isnull().any():
