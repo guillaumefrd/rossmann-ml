@@ -94,12 +94,16 @@ def __preprocess_dates__(df):
 
 
 def build_dataset(type):
-
     df = __load_data__(type)
     df = __handle_categorical__(df)
     df = __preprocess_dates__(df)
     print(df.info())
     return df
+
+
+def save_dataset(df, filename):
+    path = os.path.join('data', filename)
+    df.to_csv(path, index=False)
 
 
 class Preprocessor:

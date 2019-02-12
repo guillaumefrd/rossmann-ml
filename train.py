@@ -1,11 +1,13 @@
 import pickle
+import pandas as pd
+
 from xgboost import XGBRegressor
 from sklearn import linear_model
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
-from preprocessing import Preprocessor, build_dataset
+from preprocessing import Preprocessor, build_dataset, save_dataset
 
 
 class Model(BaseEstimator, RegressorMixin):
@@ -82,6 +84,7 @@ if __name__ == "__main__":
     preprocessor.fit(train_data)
     train_data = preprocessor.transform(train_data)
     valid_data = preprocessor.transform(valid_data)
+    save_dataset(pd.concat([train_data, valid_data]), 'train_preprocessed.csv')
 
     X_train = train_data.drop(['Sales', 'Customers'], axis=1)
     X_valid = valid_data.drop(['Sales', 'Customers'], axis=1)
