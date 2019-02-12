@@ -1,23 +1,17 @@
 import pickle
+import numpy as np
+from preprocessing import Preprocessor, build_dataset
 
-def predict(X, classifier_filename):
-        """Predict method
-        
-        Parameters
-        ----------
-        X : ndarray, shape (n_samples, n_features)
-            The features.
-            
-        classifier_filename : string
-                              Name of the pickle file containing 
-                              the trained classifier
+if __name__ == "__main__":
 
-        Returns
-        -------
-        y_pred : ndarray, shape (n_samples,)
-            The predicted target.
-        """
-    classifier_pkl = open(classifier_filename, 'rb')
-    clf = pickle.load(classifier_pkl)
-    print("Loaded classifier : ", clf)
-    return clf.predict(X)
+    test_data = build_dataset('test')
+    preprocessor = Preprocessor()
+    test_data = preprocessor.transform(test_data)
+
+    model_file = open('model.pkl', 'rb')
+    model = pickle.load(model_file)
+    model_file.close()
+
+    preds = model.predict()
+    # Sales have been scaled using logarithm during preprocessing, so we need to scale them back using exponential
+    preds = np.exp(preds)
