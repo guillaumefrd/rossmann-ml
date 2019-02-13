@@ -78,6 +78,8 @@ class Model(BaseEstimator, RegressorMixin):
 
 if __name__ == "__main__":
 
+    # load data
+    print('Loading data...')
     data = build_dataset('train')
     train_data, valid_data = train_test_split(data, test_size=0.2, random_state=42)
     preprocessor = Preprocessor()
@@ -90,6 +92,10 @@ if __name__ == "__main__":
     X_valid = valid_data.drop(['Sales', 'Customers'], axis=1)
     y_train = train_data['Sales']
     y_valid = valid_data['Sales']
+
+    print('Training model on', len(X_train), 'samples')
+    print('Validating model on', len(X_valid), 'samples')
+    print('Training model on features: ', X_train.columns.tolist())
 
     # model selection with grid search
     solvers = ['xgb', 'lasso', 'ridge', 'linear']

@@ -39,6 +39,9 @@ def check_model_drift(df_train, df_test, threshold):
 if __name__ == "__main__":
 
     test_data = build_dataset('test')
+
+    output = {'Id': test_data['Id'].tolist()}
+
     preprocessor = Preprocessor()
     test_data = preprocessor.transform(test_data)
     test_data.drop(columns=['Id'], inplace=True)
@@ -53,5 +56,12 @@ if __name__ == "__main__":
 
     preds = model.predict(test_data)
     # Sales have been scaled using logarithm during preprocessing, so we need to scale them back using exponential
-    preds = np.exp(preds)
-    print(preds)
+    output['Predictions'] = np.exp(preds)
+
+    output_df = pd.DataFrame(output)
+
+    # save predictions to csv file
+    preds_file = 'predictions.csv'
+    output_df.to_csv(preds_file, index=False)
+
+    print('Predictions saved to:', preds_file)
